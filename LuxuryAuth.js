@@ -123,7 +123,7 @@ function qs(name) {
    PUBLIC URL (NO LOCALHOST)
 =============================== */
 const PUBLIC_BASE_URL =
-  "https://xuannnzz13.github.io/Luxury-Auth-Ledger/LuxuryAuth.html";
+  "https://xuannnzz13.github.io/Luxury-Auth-Ledger/";
 
 /* ===============================
    QR + DEEP LINK
