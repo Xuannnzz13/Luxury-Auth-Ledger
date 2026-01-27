@@ -114,6 +114,12 @@ async function getContract() {
     signer
   );
 }
+function getReadOnlyProvider() {
+  return new ethers.JsonRpcProvider(
+    "https://rpc.sepolia.org" // or Infura / Alchemy
+  );
+}
+
 
 function qs(name) {
   return new URLSearchParams(window.location.search).get(name);
