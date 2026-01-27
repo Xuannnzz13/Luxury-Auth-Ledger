@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxury Authenticity Ledger</title>
+
+  <link rel="stylesheet" href="./LuxuryAuth.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="./LuxuryAuth.js"></script>
+</head>
+
+<body>
+<div class="container">
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>Luxury Authenticity Ledger</h1>
+      <p>Register • Verify • Transfer • Authenticity QR</p>
+    </div>
+  </div>
+
+  <div class="wallet">
+    <span class="pill" id="networkPill">Network: —</span>
+    <span class="pill" id="accountPill">Account: —</span>
+    <button class="btn" id="btnConnect">Connect Wallet</button>
+  </div>
+</header>
+
+<main class="card">
+
+<nav class="tabs">
+  <button class="tab active" data-tab="register">Register</button>
+  <button class="tab" data-tab="verify">Verify</button>
+  <button class="tab" data-tab="transfer">Transfer</button>
+  <button class="tab" data-tab="list">Registration List</button>
+</nav>
+
+<section class="content">
+
+<!-- REGISTER -->
+<div class="panel active" id="tab-register">
+  <div class="grid">
+
+    <div class="section">
+      <h2>Register Product</h2>
+
+      <div class="row">
+        <label>Serial Number</label>
+        <input id="regSerial" placeholder="DR-2026-0001">
+      </div>
+
+      <div class="row">
+        <label>Owner Name</label>
+        <input id="regOwnerName" placeholder="First Buyer">
+      </div>
+
+      <div class="row">
+        <label>Owner Wallet</label>
+        <input id="regOwnerWallet" placeholder="0x...">
+      </div>
+
+      <div class="row">
+        <label>Metadata (optional)</label>
+        <input id="regMeta" placeholder="ipfs://...">
+      </div>
+
+      <div class="actions">
+        <button class="btn2 primary" id="btnRegister">Register</button>
+      </div>
+
+      <div class="status" id="regStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>Generate QR Code</h2>
+
+      <div class="row">
+        <label>Serial for QR</label>
+        <input id="qrSerial">
+      </div>
+
+      <div class="actions">
+        <button class="btn2" id="btnGenerateQR">Generate QR</button>
+      </div>
+
+      <p class="small"><b>Verify Link:</b> <span id="qrLinkText">—</span></p>
+      <div id="qrcode"></div>
+      <div class="status" id="qrStatus"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- VERIFY -->
+<div class="panel" id="tab-verify" hidden>
+  <div class="section">
+    <h2>Verify Authenticity</h2>
+
+    <div class="row">
+      <label>Serial Number</label>
+      <input id="verSerial">
+    </div>
+
+    <div class="actions">
+      <button class="btn2 primary" id="btnVerify">Verify</button>
+    </div>
+
+    <div class="status" id="verStatus"></div>
+    <pre class="mono" id="verResult">—</pre>
+  </div>
+</div>
+
+<!-- TRANSFER -->
+<div class="panel" id="tab-transfer" hidden>
+  <div class="section">
+    <h2>Transfer Ownership</h2>
+
+    <div class="row">
+      <label>Serial</label>
+      <input id="trSerial">
+    </div>
+
+    <div class="row">
+      <label>New Owner Name</label>
+      <input id="trNewOwnerName">
+    </div>
+
+    <div class="row">
+      <label>New Owner Wallet</label>
+      <input id="trNewOwnerWallet">
+    </div>
+
+    <div class="actions">
+      <button class="btn2 primary" id="btnTransfer">Transfer</button>
+    </div>
+
+    <div class="status" id="trStatus"></div>
+  </div>
+</div>
+
+<!-- LIST -->
+<div class="panel" id="tab-list" hidden>
+  <div class="section">
+    <h2>Registration List (A → Z)</h2>
+
+    <button class="btn2" id="btnRefreshList">Refresh</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Serial</th>
+          <th>Issuer</th>
+          <th>Owner</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="listTbody">
+        <tr><td colspan="4">No data</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+</main>
+</div>
+
+<script>
+/* =============================
+   TAB CONTROL
+============================= */
+const $ = id => document.getElementById(id);
+const tabs = document.querySelectorAll(".tab");
+const panels = {
+  register: $("tab-register"),
+  verify: $("tab-verify"),
+  transfer: $("tab-transfer"),
+  list: $("tab-list")
+};
+
+function openTab(name){
+  tabs.forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+  Object.entries(panels).forEach(([k,p])=>{
+    p.hidden = k !== name;
+    p.classList.toggle("active", k === name);
+  });
+}
+
+tabs.forEach(t=>t.onclick = ()=>openTab(t.dataset.tab));
+
+/* =============================
+   CONNECT WALLET
+============================= */
+$("btnConnect").onclick = async ()=>{
+  const { provider } = await getProviderAndSigner();
+  const signer = await provider.getSigner();
+  $("accountPill").textContent = "Account: " + signer.address.slice(0,6)+"…";
+};
+
+/* =============================
+   REGISTER
+============================= */
+$("btnRegister").onclick = async ()=>{
+  const serial = $("regSerial").value.trim();
+  const ownerName = $("regOwnerName").value.trim() || "First Owner";
+  const wallet = $("regOwnerWallet").value.trim();
+  const meta = $("regMeta").value.trim();
+
+  try{
+    const c = await getContract();
+    const tx = await c.registerProduct(serial, ownerName, wallet, meta);
+    await tx.wait();
+    $("regStatus").textContent = "✅ Registered";
+    $("qrSerial").value = serial;
+  }catch(e){
+    $("regStatus").textContent = "❌ " + (e.message || e);
+  }
+};
+
+/* =============================
+   QR CODE (NO LOCALHOST)
+============================= */
+
+// 🔴 CHANGE THIS TO YOUR REAL GITHUB PAGES URL
+const PUBLIC_BASE_URL =
+  "https://YOUR_USERNAME.github.io/YOUR_REPO/LuxuryAuth.html";
+
+$("btnGenerateQR").onclick = ()=>{
+  const serial = $("qrSerial").value.trim();
+  if(!serial) return alert("Enter serial");
+
+  if(
+    PUBLIC_BASE_URL.includes("localhost") ||
+    PUBLIC_BASE_URL.includes("127.0.0.1") ||
+    PUBLIC_BASE_URL.startsWith("file://")
+  ){
+    alert("QR base URL is invalid");
+    return;
+  }
+
+  const link = `${PUBLIC_BASE_URL}?tab=verify&serial=${encodeURIComponent(serial)}`;
+  $("qrLinkText").textContent = link;
+  $("qrcode").innerHTML = "";
+  new QRCode($("qrcode"), { text: link, width:180, height:180 });
+};
+
+/* =============================
+   VERIFY (QR AUTO-FILL)
+============================= */
+const params = new URLSearchParams(location.search);
+if(params.get("serial")){
+  $("verSerial").value = params.get("serial");
+  openTab("verify");
+}
+
+$("btnVerify").onclick = async ()=>{
+  const serial = $("verSerial").value.trim();
+  const c = await getContract();
+  const p = await c.getProduct(serial);
+
+  if(!p[0]){
+    $("verResult").textContent = "❌ Not authentic";
+    return;
+  }
+
+  $("verResult").textContent =
+`✅ AUTHENTIC
+Serial: ${p[1]}
+Issuer: ${p[2]}
+Owner: ${p[3]}
+Wallet: ${p[4]}
+Flagged: ${p[7]}`;
+};
+</script>
+</body>
+</html>
