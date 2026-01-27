@@ -140,7 +140,7 @@ function buildVerifyLink(serial) {
     throw new Error("QR must use a public URL (GitHub Pages)");
   }
 
-  return `${PUBLIC_BASE_URL}?tab=verify&serial=${encodeURIComponent(serial)}`;
+  return `${PUBLIC_BASE_URL}?tab=verify&serial=${encodeURIComponent(serial)}&v=99`;
 }
 
 function generateVerifyQR(serial, qrDivId = "qrcode", linkSpanId = "qrLinkText") {
@@ -181,3 +181,5 @@ window.generateVerifyQR = generateVerifyQR;
 window.applyDeepLink = applyDeepLink;
 
 console.log("LuxuryAuth.js loaded ✅");
+
+
