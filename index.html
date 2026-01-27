@@ -466,7 +466,8 @@ $("btnGenerateQR").addEventListener("click", () => {
         if(!serial) return setStatus(status, "bad", "❌ Serial is required");
 
         setStatus(status, null, "Connecting...");
-        const contract = await getContract();
+        const contract = await window.getReadOnlyContract();
+
 
         setStatus(status, null, "Checking blockchain...");
         const p = await contract.getProduct(serial);
