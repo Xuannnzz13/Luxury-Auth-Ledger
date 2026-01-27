@@ -385,7 +385,8 @@
         if(!ethers.isAddress(ownerWallet)) return setStatus(status, "bad", "❌ Invalid owner wallet address");
 
         setStatus(status, null, "Connecting...");
-        const contract = await getContract();
+        const contract = await getContract({ write: true });
+
 
         setStatus(status, null, "Sending transaction...");
         const tx = await contract.registerProduct(serial, ownerName, ownerWallet, meta);
@@ -530,7 +531,8 @@ Flagged: ${flagged}
         if(!ethers.isAddress(newOwnerWallet)) return setStatus(status, "bad", "❌ Invalid new owner address");
 
         setStatus(status, null, "Connecting...");
-        const contract = await getContract();
+        const contract = await getContract({ write: true });
+
 
         // show current signer
         const acct = await getConnectedAccount();
