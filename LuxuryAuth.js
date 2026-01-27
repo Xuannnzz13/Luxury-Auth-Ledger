@@ -115,10 +115,21 @@ async function getContract() {
   );
 }
 function getReadOnlyProvider() {
-  return new ethers.JsonRpcProvider(
-    "https://rpc.sepolia.org" // or Infura / Alchemy
+  return new ethers.JsonRpcProvider("https://rpc.sepolia.org");
+}
+
+function getReadOnlyContract() {
+  const provider = getReadOnlyProvider();
+  return new ethers.Contract(
+    Contracts.LuxuryAuthContract.address,
+    Contracts.LuxuryAuthContract.abi,
+    provider
   );
 }
+
+// expose it
+window.getReadOnlyContract = getReadOnlyContract;
+
 
 
 function qs(name) {
