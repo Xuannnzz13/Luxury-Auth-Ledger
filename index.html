@@ -5,268 +5,669 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Luxury Authenticity Ledger</title>
 
-  <link rel="stylesheet" href="./LuxuryAuth.css" />
+  <!-- CSS file (separate) -->
+  <link rel="stylesheet" href="./LuxuryAuth.css?v=99" />
+<script defer src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script defer src="./LuxuryAuth.js?v=99"></script>
 
-  <!-- Libraries FIRST -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
-  <!-- Your blockchain logic -->
-  <script src="./LuxuryAuth.js"></script>
 </head>
 
 <body>
-<div class="container">
+  <div class="container">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Luxury Authenticity Ledger</h1>
+          <p>Register • Verify • Transfer • View registrations (sorted by serial)</p>
+        </div>
+      </div>
 
-<header class="topbar">
-  <div class="brand">
-    <div class="logo"></div>
-    <div>
-      <h1>Luxury Authenticity Ledger</h1>
-      <p>Register • Verify • Transfer • QR Authentication</p>
-    </div>
+      <div class="wallet">
+        <span class="pill" id="networkPill">Network: —</span>
+        <span class="pill" id="accountPill">Account: —</span>
+        <button class="btn" id="btnConnect">Connect Wallet</button>
+      </div>
+    </header>
+
+    <!-- Main card -->
+    <main class="card">
+      <!-- Tabs -->
+      <nav class="tabs" aria-label="Navigation tabs">
+        <button class="tab active" data-tab="register">Register</button>
+        <button class="tab" data-tab="verify">Verify</button>
+        <button class="tab" data-tab="transfer">Transfer</button>
+        <button class="tab" data-tab="list">Registration List</button>
+      </nav>
+
+      <!-- Tab panels -->
+      <section class="content">
+        <!-- REGISTER TAB -->
+        <div class="panel active" id="tab-register" role="tabpanel">
+          <div class="grid">
+            <div class="section">
+              <h2>Register Product (Brand)</h2>
+              <p>Registers a new authentic product to the blockchain ledger.</p>
+
+              <div class="row">
+                <label for="regSerial">Serial Number</label>
+                <input id="regSerial" placeholder="e.g. DR-2026-0001" />
+              </div>
+
+              <div class="row">
+                <label for="regOwnerName">Owner Name</label>
+                <input id="regOwnerName" placeholder="e.g. Maya" />
+              </div>
+
+              <div class="row">
+                <label for="regOwnerWallet">First Owner Wallet Address</label>
+                <input id="regOwnerWallet" placeholder="0x..." />
+              </div>
+
+              <div class="row">
+                <label for="regMeta">Metadata Hash (optional)</label>
+                <input id="regMeta" placeholder="e.g. ipfs://... or hash" />
+              </div>
+
+              <div class="actions">
+                <button class="btn2 primary" id="btnRegister">Register</button>
+                <button class="btn2" id="btnClearRegister">Clear</button>
+              </div>
+
+              <div class="status" id="regStatus"></div>
+            </div>
+
+            <div class="section">
+              <h2>QR Code (Optional)</h2>
+              <p>Generate a QR that opens this page to the Verify tab with the serial pre-filled.</p>
+
+              <div class="row">
+                <label for="qrSerial">Serial for QR</label>
+                <input id="qrSerial" placeholder="Use same serial as registration" />
+              </div>
+
+              <div class="actions">
+                <button class="btn2" id="btnGenerateQR">Generate QR</button>
+                <button class="btn2 danger" id="btnClearQR">Clear QR</button>
+              </div>
+
+              <p class="small"><b>Verify Link:</b> <span id="qrLinkText">—</span></p>
+              <div class="qrBox">
+                <div id="qrcode" aria-label="QR Code"></div>
+              </div>
+
+              <div class="status" id="qrStatus"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VERIFY TAB -->
+        <div class="panel" id="tab-verify" role="tabpanel">
+          <div class="grid">
+            <div class="section">
+              <h2>Verify Product</h2>
+              <p>Enter a serial number (or scan QR) to verify authenticity and view details.</p>
+
+              <div class="row">
+                <label for="verSerial">Serial Number</label>
+                <input id="verSerial" placeholder="e.g. DR-2026-0001" />
+              </div>
+
+              <div class="actions">
+                <button class="btn2 primary" id="btnVerify">Verify</button>
+                <button class="btn2" id="btnClearVerify">Clear</button>
+              </div>
+
+              <div class="status" id="verStatus"></div>
+            </div>
+
+            <div class="section">
+              <h2>Verification Result</h2>
+              <p>Result will show the issuer (brand), current owner, timestamp and status.</p>
+              <pre class="mono" id="verResult">—</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRANSFER TAB -->
+        <div class="panel" id="tab-transfer" role="tabpanel">
+          <div class="grid">
+            <div class="section">
+              <h2>Transfer Ownership</h2>
+              <p>Only the current owner wallet can transfer ownership.</p>
+
+              <div class="row">
+                <label for="trSerial">Serial Number</label>
+                <input id="trSerial" placeholder="e.g. DR-2026-0001" />
+              </div>
+
+              <div class="row">
+                <label for="trNewOwnerName">New Owner Name</label>
+                <input id="trNewOwnerName" placeholder="e.g. Buyer 2" />
+              </div>
+
+              <div class="row">
+                <label for="trNewOwnerWallet">New Owner Wallet Address</label>
+                <input id="trNewOwnerWallet" placeholder="0x..." />
+              </div>
+
+              <div class="row">
+                <label for="trAmount">Amount Paid (optional)</label>
+                <input id="trAmount" placeholder="0" />
+              </div>
+
+              <div class="actions">
+                <button class="btn2 primary" id="btnTransfer">Transfer</button>
+                <button class="btn2" id="btnClearTransfer">Clear</button>
+              </div>
+
+              <div class="status" id="trStatus"></div>
+            </div>
+
+            <div class="section">
+              <h2>Tip</h2>
+              <p>
+                If your contract requires the caller to be a brand/owner, ensure you're using the correct MetaMask account.
+                After transfer, go to the Verify tab to confirm the new owner.
+              </p>
+              <pre class="mono" id="trHelp">—</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIST TAB -->
+        <div class="panel" id="tab-list" role="tabpanel">
+          <div class="section">
+            <div class="listHeader">
+              <div>
+                <h2>Registration List</h2>
+                <p>Sorted alphabetically by serial number (A → Z). Search and refresh anytime.</p>
+              </div>
+
+              <div class="listControls">
+                <input id="listSearch" placeholder="Search by serial…" />
+                <button class="btn2" id="btnRefreshList">Refresh List</button>
+                <button class="btn2" id="btnSortAZ">Sort A → Z</button>
+                <button class="btn2" id="btnSortZA">Sort Z → A</button>
+              </div>
+            </div>
+
+            <div class="status" id="listStatus"></div>
+
+            <div class="tableWrap">
+              <table aria-label="Registration table">
+                <thead>
+                  <tr>
+                    <th>Serial</th>
+                    <th>Issuer Brand</th>
+                    <th>Current Owner</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="listTbody">
+                  <tr>
+                    <td colspan="5">No data yet. Register a product or click “Refresh List”.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="small">
+              Note: This list is built from your local cache + on-chain verification calls.
+              For a full on-chain list across devices, your smart contract should expose a serial array (e.g., getAllSerials()).
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div class="wallet">
-    <span class="pill" id="networkPill">Network: —</span>
-    <span class="pill" id="accountPill">Account: —</span>
-    <button class="btn" id="btnConnect">Connect Wallet</button>
-  </div>
-</header>
+  <script>
+    // ----------------------------
+    // Helpers
+    // ----------------------------
+    const $ = (id) => document.getElementById(id);
+    const LS_KEY = "luxAuth.serials.v1";
 
-<main class="card">
+    function setStatus(el, type, msg){
+      el.classList.remove("good","bad","warn");
+      if(type) el.classList.add(type);
+      el.textContent = msg || "";
+    }
 
-<nav class="tabs">
-  <button class="tab active" data-tab="register">Register</button>
-  <button class="tab" data-tab="verify">Verify</button>
-  <button class="tab" data-tab="transfer">Transfer</button>
-  <button class="tab" data-tab="list">Registration List</button>
-</nav>
+    function saveSerialToLocalCache(serial){
+      const s = (serial || "").trim();
+      if(!s) return;
+      const existing = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+      if(!existing.includes(s)){
+        existing.push(s);
+        localStorage.setItem(LS_KEY, JSON.stringify(existing));
+      }
+    }
 
-<section class="content">
+    function loadSerialsFromLocalCache(){
+      try{
+        const arr = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+        return Array.isArray(arr) ? arr : [];
+      }catch{
+        return [];
+      }
+    }
 
-<!-- ================= REGISTER ================= -->
-<div class="panel active" id="tab-register">
-  <div class="grid">
+    function sortSerials(arr, dir){
+      const copy = [...arr];
+      copy.sort((a,b)=> a.localeCompare(b, "en", { sensitivity:"base" }));
+      if(dir === "ZA") copy.reverse();
+      return copy;
+    }
 
-    <div class="section">
-      <h2>Register Product</h2>
+    function shortAddr(addr){
+      if(!addr || addr.length < 10) return addr || "";
+      return addr.slice(0,6) + "…" + addr.slice(-4);
+    }
 
-      <div class="row">
-        <label>Serial Number</label>
-        <input id="regSerial" placeholder="DR-2026-0001">
-      </div>
+    function tsToDate(ts){
+      try{ return new Date(Number(ts)*1000).toLocaleString(); }
+      catch{ return String(ts); }
+    }
 
-      <div class="row">
-        <label>First Owner Name</label>
-        <input id="regOwnerName" placeholder="First Buyer">
-      </div>
-
-      <div class="row">
-        <label>First Owner Wallet</label>
-        <input id="regOwnerWallet" placeholder="0x...">
-      </div>
-
-      <div class="row">
-        <label>Metadata (optional)</label>
-        <input id="regMeta" placeholder="ipfs://...">
-      </div>
-
-      <div class="actions">
-        <button class="btn2 primary" id="btnRegister">Register</button>
-      </div>
-
-      <div class="status" id="regStatus"></div>
-    </div>
-
-    <div class="section">
-      <h2>Generate QR</h2>
-
-      <div class="row">
-        <label>Serial for QR</label>
-        <input id="qrSerial">
-      </div>
-
-      <div class="actions">
-        <button class="btn2" id="btnGenerateQR">Generate QR</button>
-      </div>
-
-      <p class="small"><b>Verify Link:</b> <span id="qrLinkText">—</span></p>
-      <div id="qrcode"></div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ================= VERIFY ================= -->
-<div class="panel" id="tab-verify" hidden>
-  <div class="section">
-    <h2>Verify Authenticity</h2>
-
-    <div class="row">
-      <label>Serial Number</label>
-      <input id="verSerial">
-    </div>
-
-    <div class="actions">
-      <button class="btn2 primary" id="btnVerify">Verify</button>
-    </div>
-
-    <div class="status" id="verStatus"></div>
-    <pre class="mono" id="verResult">—</pre>
-  </div>
-</div>
-
-<!-- ================= TRANSFER ================= -->
-<div class="panel" id="tab-transfer" hidden>
-  <div class="section">
-    <h2>Transfer Ownership</h2>
-
-    <div class="row">
-      <label>Serial</label>
-      <input id="trSerial">
-    </div>
-
-    <div class="row">
-      <label>New Owner Name</label>
-      <input id="trNewOwnerName">
-    </div>
-
-    <div class="row">
-      <label>New Owner Wallet</label>
-      <input id="trNewOwnerWallet">
-    </div>
-
-    <div class="actions">
-      <button class="btn2 primary" id="btnTransfer">Transfer</button>
-    </div>
-
-    <div class="status" id="trStatus"></div>
-  </div>
-</div>
-
-<!-- ================= LIST ================= -->
-<div class="panel" id="tab-list" hidden>
-  <div class="section">
-    <h2>Registration List</h2>
-    <p>Demo list (on-chain enumeration not implemented)</p>
-  </div>
-</div>
-
-</section>
-</main>
-</div>
-
-<!-- ================= MAIN SCRIPT ================= -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  const $ = id => document.getElementById(id);
-
-  /* ---------- Tabs ---------- */
-  const tabs = document.querySelectorAll(".tab");
-  const panels = {
-    register: $("tab-register"),
-    verify: $("tab-verify"),
-    transfer: $("tab-transfer"),
-    list: $("tab-list")
-  };
-
-  function openTab(name){
-    tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
-    Object.entries(panels).forEach(([k,p])=>{
-      p.hidden = k !== name;
-    });
-  }
-
-  tabs.forEach(t => t.onclick = () => openTab(t.dataset.tab));
-
-  /* ---------- Wallet ---------- */
-  $("btnConnect").onclick = async ()=>{
-    try{
+    async function getConnectedAccount(){
       const { provider } = await getProviderAndSigner();
       const signer = await provider.getSigner();
-      const addr = await signer.getAddress();
-      const net = await provider.getNetwork();
-      $("accountPill").textContent = "Account: " + addr.slice(0,6) + "…";
-      $("networkPill").textContent = `Network: ${net.name}`;
-    }catch{
-      alert("MetaMask not detected or locked");
+      return await signer.getAddress();
     }
-  };
 
-  /* ---------- Register ---------- */
-  $("btnRegister").onclick = async ()=>{
-    try{
-      const serial = $("regSerial").value.trim();
-      const ownerName = $("regOwnerName").value.trim() || "First Owner";
-      const wallet = $("regOwnerWallet").value.trim();
-      const meta = $("regMeta").value.trim();
-
-      if(!serial) throw "Serial required";
-      if(!ethers.isAddress(wallet)) throw "Invalid wallet address";
-
-      $("regStatus").textContent = "Sending transaction…";
-
-      const c = await getContract();
-      const tx = await c.registerProduct(serial, ownerName, wallet, meta);
-      await tx.wait();
-
-      $("regStatus").textContent = "✅ Registered";
-      $("qrSerial").value = serial;
-
-    }catch(e){
-      $("regStatus").textContent = "❌ " + e;
+    async function updateNetworkPill(){
+      try{
+        const { provider } = await getProviderAndSigner();
+        const net = await provider.getNetwork();
+        $("networkPill").textContent = `Network: ${net.name} (${net.chainId})`;
+      }catch{
+        $("networkPill").textContent = "Network: —";
+      }
     }
-  };
 
-  /* ---------- QR ---------- */
-  const PUBLIC_BASE_URL =
-    "https://xuannzz13.github.io/Luxury-Auth-Ledger/";
+    // ----------------------------
+    // Tabs
+    // ----------------------------
+    const tabButtons = Array.from(document.querySelectorAll(".tab"));
+    const panels = {
+      register: $("tab-register"),
+      verify: $("tab-verify"),
+      transfer: $("tab-transfer"),
+      list: $("tab-list"),
+    };
 
-  $("btnGenerateQR").onclick = ()=>{
-    const serial = $("qrSerial").value.trim();
-    if(!serial) return alert("Enter serial");
+  function openTab(name){
+  tabButtons.forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.tab === name);
+  });
+
+  Object.entries(panels).forEach(([key, el])=>{
+    el.classList.toggle("active", key === name);
+  });
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", name);
+  history.replaceState({}, "", url.toString());
+}
+
+
+    tabButtons.forEach(btn=>{
+      btn.addEventListener("click", ()=> openTab(btn.dataset.tab));
+    });
+
+    // Read tab from URL
+    (function initFromUrl(){
+      const url = new URL(window.location.href);
+      const tab = url.searchParams.get("tab");
+      const serial = url.searchParams.get("serial");
+      if(tab && panels[tab]) openTab(tab);
+      if(serial){
+        $("verSerial").value = serial;
+        openTab("verify");
+      }
+    })();
+
+    // ----------------------------
+    // Connect Wallet
+    // ----------------------------
+    $("btnConnect").addEventListener("click", async ()=>{
+      try{
+        setStatus($("regStatus"), null, "");
+        const { provider } = await getProviderAndSigner();
+        const signer = await provider.getSigner();
+        const addr = await signer.getAddress();
+        $("accountPill").textContent = `Account: ${shortAddr(addr)}`;
+        await updateNetworkPill();
+      }catch(e){
+        console.log(e);
+        alert("Could not connect wallet. Make sure MetaMask is installed and unlocked.");
+      }
+    });
+
+    // Auto update pills if already connected
+    (async ()=>{
+      try{
+        if(window.ethereum){
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          if(accounts && accounts.length){
+            $("accountPill").textContent = `Account: ${shortAddr(accounts[0])}`;
+          }
+        }
+      }catch{}
+      await updateNetworkPill();
+    })();
+
+    // ----------------------------
+    // Register
+    // ----------------------------
+    $("btnClearRegister").addEventListener("click", ()=>{
+      $("regSerial").value = "";
+      $("regOwnerName").value = "";
+      $("regOwnerWallet").value = "";
+      $("regMeta").value = "";
+      setStatus($("regStatus"), null, "");
+    });
+
+    $("btnRegister").addEventListener("click", async ()=>{
+      const status = $("regStatus");
+      try{
+        const serial = $("regSerial").value.trim();
+        const ownerName = ($("regOwnerName").value.trim() || "First Owner").trim();
+        const ownerWallet = $("regOwnerWallet").value.trim();
+        const meta = $("regMeta").value.trim();
+
+        if(!serial) return setStatus(status, "bad", "❌ Serial is required");
+        if(!ethers.isAddress(ownerWallet)) return setStatus(status, "bad", "❌ Invalid owner wallet address");
+
+        setStatus(status, null, "Connecting...");
+        const contract = await getContract();
+
+        setStatus(status, null, "Sending transaction...");
+        const tx = await contract.registerProduct(serial, ownerName, ownerWallet, meta);
+
+        setStatus(status, null, "Waiting for confirmation...");
+        await tx.wait();
+
+        setStatus(status, "good", "✅ Registered successfully!");
+        saveSerialToLocalCache(serial);
+
+        // auto-fill QR serial
+        $("qrSerial").value = serial;
+
+        // refresh list silently if user visits later
+      }catch(e){
+        console.log("FULL ERROR:", e);
+        const msg = e?.info?.error?.message || e?.reason || e?.shortMessage || e?.message || String(e);
+        setStatus(status, "bad", "❌ " + msg);
+      }
+    });
+
+    // ----------------------------
+    // QR
+    // ----------------------------
+    $("btnClearQR").addEventListener("click", ()=>{
+      $("qrSerial").value = "";
+      $("qrLinkText").textContent = "—";
+      $("qrcode").innerHTML = "";
+      setStatus($("qrStatus"), null, "");
+    });
+
+    // ----------------------------
+// QR (PUBLIC URL for phone scanning)
+// ----------------------------
+
+
+// Replace your existing btnGenerateQR listener with this:
+$("btnGenerateQR").addEventListener("click", () => {
+  const status = $("qrStatus");
+  try {
+    const serial = ($("qrSerial").value.trim() || $("regSerial").value.trim()).trim();
+    if (!serial) return setStatus(status, "bad", "❌ Enter a serial first");
+
+    // safety check: prevent localhost / file links
+    const base = PUBLIC_BASE_URL.toLowerCase();
+    if (base.includes("localhost") || base.includes("127.0.0.1") || base.startsWith("file://")) {
+      return setStatus(status, "bad", "❌ PUBLIC_BASE_URL is not a public site URL");
+    }
 
     const link = `${PUBLIC_BASE_URL}?tab=verify&serial=${encodeURIComponent(serial)}`;
     $("qrLinkText").textContent = link;
+
     $("qrcode").innerHTML = "";
-    new QRCode($("qrcode"), { text: link, width:180, height:180 });
-  };
+    new QRCode($("qrcode"), { text: link, width: 180, height: 180 });
 
-  /* ---------- Verify ---------- */
-  const params = new URLSearchParams(location.search);
-  if(params.get("serial")){
-    $("verSerial").value = params.get("serial");
-    openTab("verify");
+    setStatus(status, "good", "✅ QR generated");
+  } catch (e) {
+    console.log(e);
+    setStatus(status, "bad", "❌ " + (e?.message || e));
   }
+});
 
-  $("btnVerify").onclick = async ()=>{
-    try{
-      const serial = $("verSerial").value.trim();
-      if(!serial) return;
 
-      const c = await getContract();
-      const p = await c.getProduct(serial);
+    // ----------------------------
+    // Verify
+    // ----------------------------
+    $("btnClearVerify").addEventListener("click", ()=>{
+      $("verSerial").value = "";
+      $("verResult").textContent = "—";
+      setStatus($("verStatus"), null, "");
+    });
 
-      if(!p[0]){
-        $("verResult").textContent = "❌ NOT AUTHENTIC";
+    $("btnVerify").addEventListener("click", async ()=>{
+      const status = $("verStatus");
+      try{
+        const serial = $("verSerial").value.trim();
+        if(!serial) return setStatus(status, "bad", "❌ Serial is required");
+
+        setStatus(status, null, "Connecting...");
+        const contract = await getContract();
+
+        setStatus(status, null, "Checking blockchain...");
+        const p = await contract.getProduct(serial);
+
+        const exists = p[0];
+        if(!exists){
+          $("verResult").textContent = "Serial not found on blockchain.\nAuthenticity cannot be verified (high counterfeit risk).";
+          return setStatus(status, "bad", "❌ Not verified");
+        }
+
+        const serialOut = p[1];
+        const issuerBrand = p[2];
+        const ownerName = p[3];
+        const ownerWallet = p[4];
+        const registeredAt = p[5];
+        const metadataHash = p[6];
+        const flagged = p[7];
+
+        const headline = flagged ? "⚠️ VERIFIED but FLAGGED" : "✅ VERIFIED AUTHENTIC";
+        setStatus(status, flagged ? "warn" : "good", headline);
+
+        $("verResult").textContent =
+`Serial: ${serialOut}
+Issuer Brand: ${issuerBrand}
+Owner Name: ${ownerName}
+Owner Wallet: ${ownerWallet}
+Registered At: ${tsToDate(registeredAt)}
+Metadata Hash: ${metadataHash}
+Flagged: ${flagged}
+`;
+        // add to local list cache
+        saveSerialToLocalCache(serialOut);
+      }catch(e){
+        console.log("FULL ERROR:", e);
+        const msg = e?.info?.error?.message || e?.reason || e?.shortMessage || e?.message || String(e);
+        setStatus(status, "bad", "❌ " + msg);
+      }
+    });
+
+    // ----------------------------
+    // Transfer
+    // ----------------------------
+    $("btnClearTransfer").addEventListener("click", ()=>{
+      $("trSerial").value = "";
+      $("trNewOwnerName").value = "";
+      $("trNewOwnerWallet").value = "";
+      $("trAmount").value = "";
+      $("trHelp").textContent = "—";
+      setStatus($("trStatus"), null, "");
+    });
+
+    $("btnTransfer").addEventListener("click", async ()=>{
+      const status = $("trStatus");
+      try{
+        const serial = $("trSerial").value.trim();
+        const newOwnerName = ($("trNewOwnerName").value.trim() || "New Owner").trim();
+        const newOwnerWallet = $("trNewOwnerWallet").value.trim();
+        const amountStr = $("trAmount").value.trim() || "0";
+        const amount = BigInt(amountStr);
+
+        if(!serial) return setStatus(status, "bad", "❌ Serial is required");
+        if(!ethers.isAddress(newOwnerWallet)) return setStatus(status, "bad", "❌ Invalid new owner address");
+
+        setStatus(status, null, "Connecting...");
+        const contract = await getContract();
+
+        // show current signer
+        const acct = await getConnectedAccount();
+        $("trHelp").textContent = `Current signer: ${acct}\nNote: transferOwnership can only be called by the current owner wallet.`;
+
+        setStatus(status, null, "Sending transaction...");
+        const tx = await contract.transferOwnership(serial, newOwnerName, newOwnerWallet, amount);
+
+        setStatus(status, null, "Waiting for confirmation...");
+        await tx.wait();
+
+        setStatus(status, "good", "✅ Ownership transferred!");
+        saveSerialToLocalCache(serial);
+      }catch(e){
+        console.log("FULL ERROR:", e);
+        const msg = e?.info?.error?.message || e?.reason || e?.shortMessage || e?.message || String(e);
+        setStatus(status, "bad", "❌ " + msg);
+      }
+    });
+
+    // ----------------------------
+    // Registration List (sorted)
+    // - Uses local cache of serials + verifies each serial on-chain
+    // ----------------------------
+    let listSortDir = "AZ";
+
+    async function renderList(){
+      const status = $("listStatus");
+      const tbody = $("listTbody");
+      const search = $("listSearch").value.trim().toLowerCase();
+
+      const serials = loadSerialsFromLocalCache();
+      const filtered = serials.filter(s => s.toLowerCase().includes(search));
+      const sorted = sortSerials(filtered, listSortDir);
+
+      if(sorted.length === 0){
+        tbody.innerHTML = `<tr><td colspan="5">No data yet. Register a product or click “Refresh List”.</td></tr>`;
+        setStatus(status, null, "—");
         return;
       }
 
-      $("verResult").textContent =
-`✅ AUTHENTIC
-Serial: ${p[1]}
-Issuer: ${p[2]}
-Owner: ${p[3]}
-Wallet: ${p[4]}
-Flagged: ${p[7]}`;
-    }catch(e){
-      $("verResult").textContent = "❌ " + e;
-    }
-  };
+      setStatus(status, null, "Loading details from blockchain...");
+      tbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
 
+      try{
+        const contract = await getContract();
+        const rows = [];
+
+        for (const serial of sorted){
+          try{
+            const p = await contract.getProduct(serial);
+            const exists = p[0];
+            if(!exists){
+              rows.push({ serial, exists:false });
+              continue;
+            }
+            rows.push({
+              serial: p[1],
+              issuer: p[2],
+              ownerWallet: p[4],
+              flagged: p[7],
+              exists:true
+            });
+          }catch{
+            rows.push({ serial, exists:false });
+          }
+        }
+
+        tbody.innerHTML = rows.map(r=>{
+          const statusTag = !r.exists
+            ? `<span class="tag bad">Not registered</span>`
+            : r.flagged
+              ? `<span class="tag warn">Flagged</span>`
+              : `<span class="tag good">Verified</span>`;
+
+          return `
+            <tr>
+              <td>${r.serial}</td>
+              <td>${r.exists ? shortAddr(r.issuer) : "—"}</td>
+              <td>${r.exists ? shortAddr(r.ownerWallet) : "—"}</td>
+              <td>${statusTag}</td>
+              <td>
+                <button class="btnMini" data-action="verify" data-serial="${encodeURIComponent(r.serial)}">Verify</button>
+                <button class="btnMini" data-action="transfer" data-serial="${encodeURIComponent(r.serial)}">Transfer</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        setStatus(status, "good", `✅ Loaded ${rows.length} item(s) (sorted ${listSortDir})`);
+      }catch(e){
+        console.log("FULL ERROR:", e);
+        const msg = e?.info?.error?.message || e?.reason || e?.shortMessage || e?.message || String(e);
+        setStatus(status, "bad", "❌ " + msg);
+        tbody.innerHTML = `<tr><td colspan="5">Could not load list.</td></tr>`;
+      }
+    }
+
+    // List controls
+    $("btnRefreshList").addEventListener("click", renderList);
+    $("btnSortAZ").addEventListener("click", ()=>{ listSortDir="AZ"; renderList(); });
+    $("btnSortZA").addEventListener("click", ()=>{ listSortDir="ZA"; renderList(); });
+    $("listSearch").addEventListener("input", ()=> renderList());
+
+    // Table action buttons (Verify / Transfer)
+    document.addEventListener("click", (e)=>{
+      const btn = e.target.closest("button[data-action]");
+      if(!btn) return;
+
+      const action = btn.dataset.action;
+      const serial = decodeURIComponent(btn.dataset.serial || "");
+
+      if(action === "verify"){
+        $("verSerial").value = serial;
+        openTab("verify");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      if(action === "transfer"){
+        $("trSerial").value = serial;
+        openTab("transfer");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+
+    // Refresh list when user opens List tab
+    tabButtons.find(b => b.dataset.tab === "list")?.addEventListener("click", renderList);
+    window.addEventListener("load", () => {
+  const url = new URL(window.location.href);
+  const tab = url.searchParams.get("tab");
+  const serial = url.searchParams.get("serial");
+
+  if (serial) $("verSerial").value = serial;
+
+  if (tab && panels[tab]) openTab(tab);
 });
-</script>
+
+
+  </script>
 </body>
 </html>
