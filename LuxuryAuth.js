@@ -115,7 +115,7 @@ async function getContract() {
   );
 }
 function getReadOnlyProvider() {
-  return new ethers.JsonRpcProvider("https://rpc.https://ethereum-sepolia-rpc.publicnode.com");
+  return new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
 }
 
 function getReadOnlyContract() {
