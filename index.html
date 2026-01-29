@@ -7,10 +7,11 @@
 
   <!-- CSS file (separate) -->
   <link rel="stylesheet" href="./LuxuryAuth.css?v=123" />
-<script defer src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script defer src="./LuxuryAuth.js?v=123"></script>
 
+  <!-- Libraries + your JS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script defer src="./LuxuryAuth.js?v=123"></script>
 </head>
 
 <body>
@@ -227,6 +228,15 @@
 
   <script>
     // ----------------------------
+    // Verify-only mode detection
+    // - QR links use: ?tab=verify&serial=...
+    // ----------------------------
+    const url = new URL(window.location.href);
+    const isVerifyOnlyMode =
+      url.searchParams.get("tab") === "verify" &&
+      url.searchParams.has("serial");
+
+    // ----------------------------
     // Helpers
     // ----------------------------
     const $ = (id) => document.getElementById(id);
@@ -301,39 +311,53 @@
       list: $("tab-list"),
     };
 
-  function openTab(name){
-  tabButtons.forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.tab === name);
-  });
+    // Hide non-verify tabs + wallet UI in verify-only mode (run once)
+    if (isVerifyOnlyMode) {
+      tabButtons.forEach(btn => {
+        if (btn.dataset.tab !== "verify") btn.style.display = "none";
+      });
+      const walletEl = document.querySelector(".wallet");
+      if (walletEl) walletEl.style.display = "none";
+    }
 
-  Object.entries(panels).forEach(([key, el])=>{
-    el.classList.toggle("active", key === name);
-  });
+    function openTab(name){
+      // Block navigation in verify-only mode
+      if (isVerifyOnlyMode && name !== "verify") return;
 
-  const url = new URL(window.location.href);
-  url.searchParams.set("tab", name);
-  history.replaceState({}, "", url.toString());
-}
+      tabButtons.forEach(btn=>{
+        btn.classList.toggle("active", btn.dataset.tab === name);
+      });
 
+      Object.entries(panels).forEach(([key, el])=>{
+        el.classList.toggle("active", key === name);
+      });
+
+      // update URL (keep deep link)
+      const u = new URL(window.location.href);
+      u.searchParams.set("tab", name);
+      history.replaceState({}, "", u.toString());
+    }
 
     tabButtons.forEach(btn=>{
       btn.addEventListener("click", ()=> openTab(btn.dataset.tab));
     });
 
-    // Read tab from URL
+    // Init from URL (deep link)
     (function initFromUrl(){
-      const url = new URL(window.location.href);
       const tab = url.searchParams.get("tab");
       const serial = url.searchParams.get("serial");
-      if(tab && panels[tab]) openTab(tab);
-      if(serial){
-        $("verSerial").value = serial;
+
+      if(serial) $("verSerial").value = serial;
+
+      if (isVerifyOnlyMode) {
         openTab("verify");
+      } else if(tab && panels[tab]) {
+        openTab(tab);
       }
     })();
 
     // ----------------------------
-    // Connect Wallet
+    // Connect Wallet (brand only)
     // ----------------------------
     $("btnConnect").addEventListener("click", async ()=>{
       try{
@@ -349,7 +373,7 @@
       }
     });
 
-    // Auto update pills if already connected
+    // Auto update pills if already connected (brand view)
     (async ()=>{
       try{
         if(window.ethereum){
@@ -385,8 +409,7 @@
         if(!ethers.isAddress(ownerWallet)) return setStatus(status, "bad", "❌ Invalid owner wallet address");
 
         setStatus(status, null, "Connecting...");
-        const contract = await getContract({ write: true });
-
+        const contract = await getContract(); // MetaMask signer
 
         setStatus(status, null, "Sending transaction...");
         const tx = await contract.registerProduct(serial, ownerName, ownerWallet, meta);
@@ -396,11 +419,7 @@
 
         setStatus(status, "good", "✅ Registered successfully!");
         saveSerialToLocalCache(serial);
-
-        // auto-fill QR serial
         $("qrSerial").value = serial;
-
-        // refresh list silently if user visits later
       }catch(e){
         console.log("FULL ERROR:", e);
         const msg = e?.info?.error?.message || e?.reason || e?.shortMessage || e?.message || String(e);
@@ -418,37 +437,25 @@
       setStatus($("qrStatus"), null, "");
     });
 
-    // ----------------------------
-// QR (PUBLIC URL for phone scanning)
-// ----------------------------
+    $("btnGenerateQR").addEventListener("click", ()=>{
+      const status = $("qrStatus");
+      try{
+        const serial = ($("qrSerial").value.trim() || $("regSerial").value.trim()).trim();
+        if(!serial) return setStatus(status, "bad", "❌ Enter a serial first");
 
+        // Use your JS helper so link is consistent (+ cache-bust)
+        const link = buildVerifyLink ? buildVerifyLink(serial) : `${location.origin}${location.pathname}?tab=verify&serial=${encodeURIComponent(serial)}&v=123`;
 
-// Replace your existing btnGenerateQR listener with this:
-$("btnGenerateQR").addEventListener("click", () => {
-  const status = $("qrStatus");
-  try {
-    const serial = ($("qrSerial").value.trim() || $("regSerial").value.trim()).trim();
-    if (!serial) return setStatus(status, "bad", "❌ Enter a serial first");
+        $("qrLinkText").textContent = link;
+        $("qrcode").innerHTML = "";
+        new QRCode($("qrcode"), { text: link, width: 180, height: 180 });
 
-    // safety check: prevent localhost / file links
-    const base = PUBLIC_BASE_URL.toLowerCase();
-    if (base.includes("localhost") || base.includes("127.0.0.1") || base.startsWith("file://")) {
-      return setStatus(status, "bad", "❌ PUBLIC_BASE_URL is not a public site URL");
-    }
-
-    const link = `${PUBLIC_BASE_URL}?tab=verify&serial=${encodeURIComponent(serial)}`;
-    $("qrLinkText").textContent = link;
-
-    $("qrcode").innerHTML = "";
-    new QRCode($("qrcode"), { text: link, width: 180, height: 180 });
-
-    setStatus(status, "good", "✅ QR generated");
-  } catch (e) {
-    console.log(e);
-    setStatus(status, "bad", "❌ " + (e?.message || e));
-  }
-});
-
+        setStatus(status, "good", "✅ QR generated");
+      }catch(e){
+        console.log(e);
+        setStatus(status, "bad", "❌ " + (e?.message || e));
+      }
+    });
 
     // ----------------------------
     // Verify
@@ -465,11 +472,8 @@ $("btnGenerateQR").addEventListener("click", () => {
         const serial = $("verSerial").value.trim();
         if(!serial) return setStatus(status, "bad", "❌ Serial is required");
 
-        setStatus(status, null, "Connecting...");
-        const contract = window.getReadOnlyContract();
-
-
         setStatus(status, null, "Checking blockchain...");
+        const contract = window.getReadOnlyContract(); // NO MetaMask
         const p = await contract.getProduct(serial);
 
         const exists = p[0];
@@ -498,7 +502,6 @@ Registered At: ${tsToDate(registeredAt)}
 Metadata Hash: ${metadataHash}
 Flagged: ${flagged}
 `;
-        // add to local list cache
         saveSerialToLocalCache(serialOut);
       }catch(e){
         console.log("FULL ERROR:", e);
@@ -532,10 +535,8 @@ Flagged: ${flagged}
         if(!ethers.isAddress(newOwnerWallet)) return setStatus(status, "bad", "❌ Invalid new owner address");
 
         setStatus(status, null, "Connecting...");
-        const contract = await getContract({ write: true });
+        const contract = await getContract(); // MetaMask signer
 
-
-        // show current signer
         const acct = await getConnectedAccount();
         $("trHelp").textContent = `Current signer: ${acct}\nNote: transferOwnership can only be called by the current owner wallet.`;
 
@@ -555,8 +556,8 @@ Flagged: ${flagged}
     });
 
     // ----------------------------
-    // Registration List (sorted)
-    // - Uses local cache of serials + verifies each serial on-chain
+    // Registration List
+    // (Optional: keep MetaMask or switch to read-only)
     // ----------------------------
     let listSortDir = "AZ";
 
@@ -579,7 +580,7 @@ Flagged: ${flagged}
       tbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
 
       try{
-        const contract = await getContract();
+        const contract = window.getReadOnlyContract(); // read-only is safer for list
         const rows = [];
 
         for (const serial of sorted){
@@ -632,7 +633,6 @@ Flagged: ${flagged}
       }
     }
 
-    // List controls
     $("btnRefreshList").addEventListener("click", renderList);
     $("btnSortAZ").addEventListener("click", ()=>{ listSortDir="AZ"; renderList(); });
     $("btnSortZA").addEventListener("click", ()=>{ listSortDir="ZA"; renderList(); });
@@ -652,25 +652,14 @@ Flagged: ${flagged}
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
       if(action === "transfer"){
+        // blocked by openTab in verify-only mode
         $("trSerial").value = serial;
         openTab("transfer");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
 
-    // Refresh list when user opens List tab
     tabButtons.find(b => b.dataset.tab === "list")?.addEventListener("click", renderList);
-    window.addEventListener("load", () => {
-  const url = new URL(window.location.href);
-  const tab = url.searchParams.get("tab");
-  const serial = url.searchParams.get("serial");
-
-  if (serial) $("verSerial").value = serial;
-
-  if (tab && panels[tab]) openTab(tab);
-});
-
-
   </script>
 </body>
 </html>
